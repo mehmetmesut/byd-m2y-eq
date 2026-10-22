@@ -18,8 +18,8 @@ android {
         minSdk = 28 // DynamicsProcessing
         // BYD head unit is Android 10; targeting it avoids later foreground-service type rules
         targetSdk = 29
-        versionCode = 125076800
-        versionName = "1.25.07.68.0"
+        versionCode = 125076801
+        versionName = "1.25.07.68.1"
     }
 
     signingConfigs {

@@ -19,7 +19,8 @@ import kotlin.math.roundToInt
 /**
  * Landscape control panel for the 1920x1080 / 240 dpi BYD centre screen, in the M2Y visual language
  * (ice background, 18 dp cards, uppercase section labels, large light numerals, blue accent). Built in code.
- * Two tabs: "Ekolayzır" (bands, bass, loudness) and "Ses" (bass frequency, balance, surround).
+ * Two tabs: "Ekolayzır" (bands, bass, loudness) and "Ses" (bass frequency, balance, surround, curve intensity,
+ * headroom and a level-matched A/B switch).
  */
 class MainActivity : Activity() {
     private lateinit var store: EqStore
@@ -38,6 +39,8 @@ class MainActivity : Activity() {
     private lateinit var m2yPreset: EqSettings // the saved "M2Y" preset; the save chip lights up when settings differ
     private lateinit var saveChip: TextView
     private lateinit var resetChip: TextView
+    private val headroomChips = mutableMapOf<Headroom, TextView>()
+    private lateinit var matchChip: TextView
 
     private lateinit var enabledChip: TextView
     private val tabChips = mutableMapOf<String, TextView>()
@@ -110,7 +113,7 @@ class MainActivity : Activity() {
             presetChips[name] = chip(name) { choosePreset(name) }.also { addView(it, margins(start = Palette.GAP_SMALL_DP)) }
         }
         addView(View(context), LinearLayout.LayoutParams(0, 1, 1f))
-        listOf(EqSettings.OCTAVE.size, EqSettings.THIRD_OCTAVE.size).forEach { n ->
+        listOf(EqSettings.OCTAVE.size, EqSettings.FINE.size).forEach { n ->
             modeChips[n] = chip("$n bant") { settings = settings.resampled(n); changed() }.also { addView(it, margins(start = Palette.GAP_SMALL_DP)) }
         }
         saveChip = chip(getString(R.string.save_preset)) {
@@ -145,7 +148,7 @@ class MainActivity : Activity() {
 
     private fun choosePreset(name: String) {
         settings = if (name == EqSettings.DEFAULT_PRESET) {
-            m2yPreset.resampled(settings.gains.size).copy(enabled = settings.enabled) // the user's full snapshot
+            m2yPreset.resampled(settings.gains.size).copy(enabled = settings.enabled, matchLevel = settings.matchLevel) // the user's full snapshot
         } else {
             settings.copy(gains = EqSettings.PRESETS.getValue(name).resampled(settings.gains.size).gains)
         }
@@ -170,8 +173,36 @@ class MainActivity : Activity() {
             { sliderCard(it, "SANAL SURROUND", PERCENT, { i -> i / PERCENT.toFloat() }, { v -> (v * PERCENT).roundToInt() },
                 { v -> if (v == 0f) "Kapalı" else "%${(v * PERCENT).roundToInt()}" }, "Araçta %20–40 yeterli; kapalıyken kaynak harcamaz",
                 { settings.surround }) { v -> settings = settings.copy(surround = v) } },
-            { View(it.context).also { spacer -> it.addView(spacer, LinearLayout.LayoutParams(0, 1, 1f)) } },
+            { sliderCard(it, "ÖN AYAR YOĞUNLUĞU", (EqSettings.INTENSITY_MAX * INTENSITY_STEPS).toInt(),
+                { i -> i / INTENSITY_STEPS }, { v -> (v * INTENSITY_STEPS).roundToInt() },
+                { v -> "%${(v * PERCENT).roundToInt()}" }, "Bant eğrisini yumuşatır ya da güçlendirir; bas ve ses yükseltme ayrı",
+                { settings.intensity }) { v -> settings = settings.copy(intensity = v) } },
         ), LinearLayout.LayoutParams(-1, -2).also { it.topMargin = dp(Palette.GAP_DP) })
+        addView(cardRow(::headroomCard, ::matchCard), LinearLayout.LayoutParams(-1, -2).also { it.topMargin = dp(Palette.GAP_DP) })
+    }
+
+    /** How much of the boost is taken back before the EQ; BALANCED is the default. */
+    private fun headroomCard(parent: LinearLayout) {
+        val card = card()
+        card.addView(caps("SES GÜCÜ"))
+        card.addView(label("Dengeli: güçlü ve temiz · Güçlü: en yüksek ses · Temiz: hiç sınırlama yok", 16f, p.secondary))
+        val row = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
+        HEADROOM_LABELS.forEachIndexed { i, (h, text) ->
+            headroomChips[h] = chip(text) { settings = settings.copy(headroom = h); changed() }
+                .also { row.addView(it, margins(start = if (i == 0) 0 else Palette.GAP_SMALL_DP)) }
+        }
+        card.addView(row, margins(top = Palette.GAP_SMALL_DP))
+        parent.addView(card, LinearLayout.LayoutParams(0, -2, 1f))
+    }
+
+    /** Level-matched A/B: Hi-Fi DSP and Referans play equally loud, so only the tone is compared. */
+    private fun matchCard(parent: LinearLayout) {
+        val card = card()
+        card.addView(caps("ADİL KARŞILAŞTIRMA"))
+        card.addView(label("Hi-Fi DSP ↔ Referans geçişinde ses düzeyi eşitlenir; karşılaştırma bitince kapatın", 16f, p.secondary))
+        matchChip = chip("") { settings = settings.copy(matchLevel = !settings.matchLevel); changed() }
+        card.addView(matchChip, margins(top = Palette.GAP_SMALL_DP))
+        parent.addView(card, LinearLayout.LayoutParams(0, -2, 1f))
     }
 
     // ---- shared building blocks ----
@@ -249,6 +280,9 @@ class MainActivity : Activity() {
         tabChips.forEach { (name, chip) -> styleChip(chip, name == tab) }
         pages.forEach { (name, page) -> page.visibility = if (name == tab) View.VISIBLE else View.GONE }
         modeChips.forEach { (n, chip) -> styleChip(chip, settings.gains.size == n) }
+        headroomChips.forEach { (h, chip) -> styleChip(chip, settings.headroom == h) }
+        styleChip(matchChip, settings.matchLevel)
+        matchChip.text = if (settings.matchLevel) "Eşit ses düzeyi: açık" else "Eşit ses düzeyi: kapalı"
         presetChips.forEach { (name, chip) -> styleChip(chip, name == activePreset) }
         bands.settings = settings
         refreshers.forEach { it() }
@@ -330,6 +364,8 @@ class MainActivity : Activity() {
         const val HZ_STEP = 5f
         const val BALANCE_STEPS = 20 // 5% per step each side
         const val PERCENT = 100
+        const val INTENSITY_STEPS = 10f // 10 % per step
+        val HEADROOM_LABELS = listOf(Headroom.CLEAN to "Temiz", Headroom.BALANCED to "Dengeli", Headroom.STRONG to "Güçlü")
         const val DISABLED_ALPHA = 0.45f
         val FACTORY_M2Y: EqSettings = EqSettings.PRESETS.getValue(EqSettings.DEFAULT_PRESET)
     }

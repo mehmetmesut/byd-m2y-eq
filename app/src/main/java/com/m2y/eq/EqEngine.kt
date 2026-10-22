@@ -8,7 +8,7 @@ import android.media.audiofx.Virtualizer
 import android.util.Log
 
 /**
- * Per audio session: one DynamicsProcessing (bass shelf, 30-band EQ, per-channel limiter for loudness and balance),
+ * Per audio session: one DynamicsProcessing (bass shelf, FINE-layout EQ, per-channel limiter for loudness and balance),
  * plus a Virtualizer only while surround is switched on.
  * No reverb: PresetReverb on session 0 is an auxiliary effect that ordinary players never attach to, so it is inaudible.
  * Session 0 is the global output mix; player sessions are used only if the global one is refused.
@@ -56,7 +56,7 @@ class EqEngine {
     }
 
     private fun apply(dp: DynamicsProcessing, s: EqSettings) {
-        dp.setInputGainAllChannelsTo(EqSettings.preampDb(s))
+        dp.setInputGainAllChannelsTo(EqSettings.inputGainDb(s))
         dp.setPreEqBandAllChannelsTo(0, EqBand(true, s.bassHz, s.bassDb))
         dp.setPreEqBandAllChannelsTo(1, EqBand(true, EqSettings.TOP_CUTOFF_HZ, 0f))
         s.engineGains().forEachIndexed { i, db -> dp.setPostEqBandAllChannelsTo(i, EqBand(true, CUTOFFS[i], db)) }
@@ -104,13 +104,14 @@ class EqEngine {
 
     private companion object {
         const val TAG = "M2YEQ"
-        // Always the 30-band 1/3-octave grid; 10-band settings arrive already spread over it (EqSettings.engineGains)
-        val CUTOFFS = EqSettings.cutoffs(EqSettings.THIRD_OCTAVE)
+        // Always the FINE layout; 10-band settings arrive already spread over it (EqSettings.engineGains)
+        val CUTOFFS = EqSettings.cutoffs(EqSettings.FINE)
         const val CHANNELS = 2
         const val PRE_EQ_BANDS = 2 // bass shelf + pass-through up to 20 kHz
-        const val FRAME_MS = 10f
+        // 20 ms → 1024-point FFT at 48 kHz (46,9 Hz bins): the bass bands become separable; ~21 ms latency, same CPU
+        const val FRAME_MS = EqSettings.ENGINE_FRAME_MS
         const val LIMITER_ATTACK_MS = 1f
-        const val LIMITER_RELEASE_MS = 60f
+        const val LIMITER_RELEASE_MS = 120f // smoother when BALANCED/STRONG headroom lets the limiter work
         const val LIMITER_RATIO = 10f
         const val LIMITER_THRESHOLD_DB = -1f // −1 dB ceiling; it is a sample-peak limiter, so the preamp keeps extra margin
         const val MAX_STRENGTH = 1000 // Virtualizer strength range 0..1000

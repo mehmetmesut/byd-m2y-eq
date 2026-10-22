@@ -1,18 +1,25 @@
 package com.m2y.eq
 
 import kotlin.math.ln
+import kotlin.math.log2
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
+/** How much of the boost is taken back before the EQ (input gain). */
+enum class Headroom { CLEAN, BALANCED, STRONG }
+
 /** Pure equalizer model: band layouts, presets and slider mapping. No Android types, so it is unit-tested. */
 data class EqSettings(
-    val gains: List<Float>,        // dB per band; 10 = octave ("Basit"), 30 = 1/3 octave ("Hassas")
+    val gains: List<Float>,        // dB per band; 10 = octave, 25 = FINE (what the engine can really resolve)
     val bassDb: Float = 0f,        // low-shelf boost below bassHz
     val loudnessDb: Float = 0f,    // limiter post-gain
     val enabled: Boolean = true,
     val bassHz: Float = BASS_DEFAULT_HZ,
     val balance: Float = 0f,       // -1 = left only … +1 = right only
     val surround: Float = 0f,      // Virtualizer strength 0…1; 0 = effect not created
+    val headroom: Headroom = Headroom.BALANCED,
+    val intensity: Float = 1f,     // curve strength 0…2 (0 % … 200 %); scales the bands, not bass or loudness
+    val matchLevel: Boolean = false, // fair A/B: the average gain is taken back so Hi-Fi and Referans sound equally loud
 ) {
     init {
         require(gains.size in LAYOUTS) { "band count must be one of ${LAYOUTS.keys}, got ${gains.size}" }
@@ -35,54 +42,60 @@ data class EqSettings(
             bassDb = mix(bassDb, to.bassDb),
             loudnessDb = mix(loudnessDb, to.loudnessDb),
             balance = mix(balance, to.balance),
+            intensity = mix(intensity, to.intensity),
         )
     }
 
-    /** Any adjustable value (bands, bass, loudness, bass frequency, balance, surround) differs from [preset]; on/off is not part of a preset. */
-    fun differsFrom(preset: EqSettings): Boolean = copy(enabled = true) != preset.resampled(gains.size).copy(enabled = true)
+    /** Any sound setting differs from [preset]; on/off and the A/B level match are comparison tools, not part of a preset. */
+    fun differsFrom(preset: EqSettings): Boolean =
+        copy(enabled = true, matchLevel = false) != preset.resampled(gains.size).copy(enabled = true, matchLevel = false)
 
     fun withBand(index: Int, db: Float) = copy(gains = gains.toMutableList().also { it[index] = clampBand(db) })
 
     /** Same curve on another layout: gains are interpolated on a log-frequency axis. */
     fun resampled(bands: Int): EqSettings =
-        if (bands == gains.size) this else copy(gains = LAYOUTS.getValue(bands).map { curveAt(it) })
+        if (bands == gains.size) this else copy(gains = LAYOUTS.getValue(bands).map { interpolate(centers, gains, it, round = true) })
 
     /**
-     * The curve the engine runs: always 30 bands. A 10-band setting is spread smoothly (unrounded) over the 1/3-octave
-     * grid, so the frequency-domain EQ has no 2–4 dB jumps at the wide octave band edges.
+     * The curve the engine runs: always the FINE layout, scaled by [intensity]. A 10-band setting is spread smoothly
+     * (unrounded) over it, so the frequency-domain EQ has no jumps at the wide octave band edges.
      */
-    fun engineGains(): List<Float> =
-        if (gains.size == THIRD_OCTAVE.size) gains else THIRD_OCTAVE.map { curveAt(it, round = false) }
-
-    /** Same settings with the engine's 30-band curve; used to blend between any two settings. */
-    fun toEngine(): EqSettings = copy(gains = engineGains())
-
-    private fun curveAt(hz: Float, round: Boolean = true): Float {
-        val c = centers
-        if (hz <= c.first()) return gains.first()
-        if (hz >= c.last()) return gains.last()
-        val i = c.indexOfLast { it <= hz }
-        val t = (ln(hz) - ln(c[i])) / (ln(c[i + 1]) - ln(c[i]))
-        val db = gains[i] + t * (gains[i + 1] - gains[i])
-        return if (round) (db / STEP_DB).roundToInt() * STEP_DB else db
+    fun engineGains(): List<Float> {
+        val curve = if (gains.size == FINE.size) gains else FINE.map { interpolate(centers, gains, it, round = false) }
+        return curve.map { (it * intensity).coerceIn(-ENGINE_MAX_DB, ENGINE_MAX_DB) }
     }
+
+    /** Same settings with the engine's curve (intensity already applied); used to blend between any two settings. */
+    fun toEngine(): EqSettings = copy(gains = engineGains(), intensity = 1f)
 
     companion object {
         val OCTAVE = floatArrayOf(31f, 62f, 125f, 250f, 500f, 1000f, 2000f, 4000f, 8000f, 16000f)
-        // 30 bands, 25 Hz–20 kHz (20 Hz is below what the boot subwoofer plays usefully)
-        val THIRD_OCTAVE = floatArrayOf(
+
+        /**
+         * Bands the engine can really tell apart. DynamicsProcessing (Android 10, frequency variant) works on FFT bins of
+         * sampleRate / blockSize; with 20 ms frames at 48 kHz the block is 1024, one bin every 46,875 Hz. Below 300 Hz a
+         * band per bin (47, 94 … 281 Hz), above that 1/3 octave. Every band owns at least one bin at 44,1 and 48 kHz.
+         */
+        val FINE = floatArrayOf(
+            47f, 94f, 141f, 188f, 234f, 281f, 315f, 400f, 500f, 630f, 800f, 1000f, 1250f, 1600f, 2000f,
+            2500f, 3150f, 4000f, 5000f, 6300f, 8000f, 10000f, 12500f, 16000f, 20000f,
+        )
+        val LAYOUTS = mapOf(OCTAVE.size to OCTAVE, FINE.size to FINE)
+
+        /** The 30-band 1/3-octave grid of releases up to 1.25.07.68.0; stored settings and presets are converted from it. */
+        val LEGACY_THIRD = floatArrayOf(
             25f, 31.5f, 40f, 50f, 63f, 80f, 100f, 125f, 160f, 200f, 250f, 315f, 400f, 500f, 630f,
             800f, 1000f, 1250f, 1600f, 2000f, 2500f, 3150f, 4000f, 5000f, 6300f, 8000f, 10000f, 12500f, 16000f, 20000f,
         )
-        val LAYOUTS = mapOf(OCTAVE.size to OCTAVE, THIRD_OCTAVE.size to THIRD_OCTAVE)
 
-        // Safe range is ±6 dB; the user may go further (±12), the UI then shows the value in
-        // orange. The automatic preamp keeps the EQ from clipping either way.
+        // Safe range is ±6 dB; the user may go further (±12), the UI then shows the value in orange.
         const val SAFE_DB = 6f
         const val BAND_MIN_DB = -12f
         const val BAND_MAX_DB = 12f
-        const val BASS_MAX_DB = 12f
-        const val LOUDNESS_MAX_DB = 10f
+        const val ENGINE_MAX_DB = 15f // band × intensity ceiling
+        const val BASS_MAX_DB = 15f
+        const val LOUDNESS_MAX_DB = 15f
+        const val INTENSITY_MAX = 2f
 
         const val BASS_DEFAULT_HZ = 80f
         const val BASS_MIN_HZ = 40f
@@ -92,52 +105,103 @@ data class EqSettings(
         const val STEP_DB = 0.5f
         const val TOP_CUTOFF_HZ = 20000f
 
+        // DynamicsProcessing geometry the bands are designed for (see FINE)
+        const val ENGINE_FRAME_MS = 20f
+        const val ENGINE_BLOCK = 1024
+
         val FLAT = EqSettings(List(OCTAVE.size) { 0f })
 
         /** Reference profile: every band 0 dB and no extra processing; the factory Infinity DSP stays as tuned. */
         const val REFERENCE_PRESET = "BYD"
 
-        // Pop/Rock/Rap/Klasik are 1/3-octave curves tuned for this car (Infinity system, SUV cabin):
-        // nothing is boosted at 25 Hz (sub limit, cabin gain), 4–5 kHz stays ≤ +0,5 dB (A-pillar tweeters and
-        // windscreen glare), 250–315 Hz is never boosted (door-panel boxiness). M2Y (the user's own curve) and Konuşma
-        // are octave curves; the engine always runs them as smooth 30-band curves.
-        private fun third(vararg from25Hz: Float) = EqSettings(from25Hz.toList())
+        /** Converts a 30-band 1/3-octave curve (old storage, preset tables) to the FINE layout. */
+        fun fromLegacyThird(gains: List<Float>): List<Float> {
+            require(gains.size == LEGACY_THIRD.size) { "legacy curve needs ${LEGACY_THIRD.size} bands" }
+            return FINE.map { interpolate(LEGACY_THIRD, gains, it, round = true) }
+        }
+
+        // Pop/Rock/Rap/Klasik/AI are written on the 1/3-octave table they were tuned on, for this car (Infinity system,
+        // SUV cabin): 4–5 kHz stays ≤ +0,5 dB (A-pillar tweeters and windscreen glare), 250–315 Hz is never boosted
+        // (door-panel boxiness). M2Y (the user's own curve) and Konuşma are octave curves.
+        private fun third(vararg from25Hz: Float) = EqSettings(fromLegacyThird(from25Hz.toList()))
         val PRESETS: Map<String, EqSettings> = linkedMapOf(
             "M2Y" to EqSettings(listOf(3f, 2f, 2f, -2f, -3f, 0f, 3f, 2f, 3f, 1f)),
             REFERENCE_PRESET to FLAT,
             // "AI": transparent calibration for the SEAL U Infinity system (boot subwoofer, 4 door woofers, centre mid,
-            // 4 tweeters) in a closed SUV cabin. Cabin gain already lifts < 60 Hz, so the sub gets only a gentle
-            // 40–80 Hz punch and 25 Hz is trimmed to save headroom; 250–400 Hz door-panel/boxy build-up is cut;
-            // 2–2,5 kHz adds vocal clarity while 4–5 kHz (A-pillar tweeter + windscreen glare) stays flat;
-            // 8–12,5 kHz restores the air that road noise masks. Max ±1,5 dB keeps it close to the factory tuning.
+            // 4 tweeters) in a closed SUV cabin: gentle 40–80 Hz punch, 250–400 Hz boxiness cut, 2–2,5 kHz vocal clarity,
+            // 4–5 kHz flat, 8–12,5 kHz air. Max ±1,5 dB at 100 %; the intensity slider makes it stronger.
             "AI" to third(-.5f, .5f, 1f, 1.5f, 1.5f, 1.5f, 1f, .5f, 0f, -.5f, -1f, -1.5f, -1f, -.5f, 0f,
-                0f, 0f, .5f, .5f, 1f, 1f, .5f, 0f, 0f, .5f, 1f, 1.5f, 1.5f, 1f, 0f), // 25 Hz −0,5: no infrasonic load
+                0f, 0f, .5f, .5f, 1f, 1f, .5f, 0f, 0f, .5f, 1f, 1.5f, 1.5f, 1f, 0f),
             "Pop" to third(0f, 0f, .5f, .5f, 1f, 1f, .5f, .5f, 0f, -.5f, -.5f, -.5f, 0f, 0f, 0f,
                 .5f, .5f, .5f, 1f, 1f, 1.5f, 1f, .5f, 0f, 0f, .5f, 1f, 1f, .5f, 0f),
             "Rock" to third(0f, 0f, 0f, .5f, .5f, 1f, 1.5f, 1f, .5f, 0f, -.5f, -.5f, 0f, 0f, 0f,
-                .5f, .5f, .5f, 1f, 1.5f, 1.5f, 1f, .5f, .5f, 0f, 0f, .5f, .5f, .5f, 0f), // 4 kHz +1 → +0,5
+                .5f, .5f, .5f, 1f, 1.5f, 1.5f, 1f, .5f, .5f, 0f, 0f, .5f, .5f, .5f, 0f),
             "Rap" to third(0f, 1f, 1.5f, 2f, 2f, 1.5f, 1f, .5f, 0f, -.5f, -1f, -.5f, 0f, 0f, 0f,
                 0f, 0f, 0f, 0f, .5f, .5f, .5f, .5f, 0f, .5f, 1f, 1f, .5f, .5f, 0f),
             "Klasik" to third(0f, 0f, 0f, 0f, 0f, 0f, -.5f, -.5f, -.5f, -.5f, 0f, 0f, 0f, 0f, 0f,
-                0f, 0f, 0f, 0f, .5f, .5f, .5f, .5f, .5f, .5f, .5f, 1f, 1f, .5f, 0f), // 4 kHz +1 → +0,5
+                0f, 0f, 0f, 0f, .5f, .5f, .5f, .5f, .5f, .5f, .5f, 1f, 1f, .5f, 0f),
             // Speech clarity from the centre speaker at 1–2 kHz; 250–315 Hz and 4–5 kHz kept out of the boost (car rules)
             "Konuşma" to EqSettings(listOf(-3f, -2f, -1f, -1f, 1f, 3f, 3f, .5f, 0f, -1f)),
         )
 
         /**
-         * Input gain that cancels the largest boost plus a true-peak margin, so the EQ itself does not clip
-         * (e.g. Pop/Rock −3,5 dB); the −1 dB limiter is only a backstop. Cuts never raise it.
+         * Input gain before the EQ. CLEAN takes back the largest boost plus a true-peak margin (no limiting, quietest);
+         * BALANCED lets the first [BALANCED_FREE_DB] of boost through and the −1 dB limiter catches the peaks;
+         * STRONG takes nothing back (as loud as other EQ apps; the limiter works hardest). Cuts never raise the gain.
          */
         fun preampDb(s: EqSettings): Float {
-            val boost = (s.gains + s.bassDb).max()
-            return if (boost > 0f) -(boost + PREAMP_MARGIN_DB) else 0f
+            val boost = (s.engineGains() + s.bassDb).max()
+            if (boost <= 0f) return 0f
+            return when (s.headroom) {
+                Headroom.CLEAN -> -(boost + PREAMP_MARGIN_DB)
+                Headroom.BALANCED -> -maxOf(0f, boost - BALANCED_FREE_DB)
+                Headroom.STRONG -> 0f
+            }
         }
         const val PREAMP_MARGIN_DB = 2f
+        const val BALANCED_FREE_DB = 3f
+
+        /** What the engine sets as input gain: the headroom rule, or for a fair A/B the average gain taken back. */
+        fun inputGainDb(s: EqSettings): Float =
+            if (s.matchLevel) -(averageGainDb(s) + maxOf(0f, s.loudnessDb)) else preampDb(s)
+
+        /**
+         * Average gain the curve adds where music has its energy (94 Hz – 8 kHz), each band weighted by its width in
+         * octaves, the bass shelf included. Used to match loudness for a fair comparison.
+         */
+        fun averageGainDb(s: EqSettings): Float {
+            val curve = s.engineGains()
+            val cut = cutoffs(FINE)
+            var sum = 0f
+            var weight = 0f
+            for (i in 1 until FINE.size) {
+                if (FINE[i] < LEVEL_LOW_HZ || FINE[i] > LEVEL_HIGH_HZ) continue
+                val w = log2(cut[i] / cut[i - 1])
+                // the engine's bass band takes whole bins up to round(bassHz / bin), i.e. centres below bassHz + ½ bin
+                sum += w * (curve[i] + if (FINE[i] < s.bassHz + BIN_HZ / 2) s.bassDb else 0f)
+                weight += w
+            }
+            return if (weight > 0f) sum / weight else 0f
+        }
+        private const val LEVEL_LOW_HZ = 90f
+        private const val LEVEL_HIGH_HZ = 8000f
+        private const val BIN_HZ = 48000f / ENGINE_BLOCK
+
         const val DEFAULT_PRESET = "M2Y"
 
         /** Upper cutoff of each band = geometric mean of neighbouring centres; the last band reaches 20 kHz. */
         fun cutoffs(centers: FloatArray): FloatArray = FloatArray(centers.size) { i ->
             if (i == centers.lastIndex) TOP_CUTOFF_HZ else sqrt(centers[i] * centers[i + 1])
+        }
+
+        /** Log-frequency interpolation of a curve given at [centers]; outside the range the end value holds. */
+        fun interpolate(centers: FloatArray, gains: List<Float>, hz: Float, round: Boolean): Float {
+            if (hz <= centers.first()) return gains.first()
+            if (hz >= centers.last()) return gains.last()
+            val i = centers.indexOfLast { it <= hz }
+            val t = (ln(hz) - ln(centers[i])) / (ln(centers[i + 1]) - ln(centers[i]))
+            val db = gains[i] + t * (gains[i + 1] - gains[i])
+            return if (round) (db / STEP_DB).roundToInt() * STEP_DB else db
         }
 
         fun clampBand(db: Float) = db.coerceIn(BAND_MIN_DB, BAND_MAX_DB)

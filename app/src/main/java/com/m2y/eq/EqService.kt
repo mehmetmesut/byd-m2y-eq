@@ -109,7 +109,7 @@ class EqService : Service() {
             inCall -> { release(); getString(R.string.notification_on, "görüşme sürüyor, EQ beklemede") }
             else -> {
                 lastApplied?.takeIf { globalOk && it != s }?.let { from ->
-                    val (a, z) = from.toEngine() to s.toEngine() // both 30-band, so 10↔30 mode switches fade too
+                    val (a, z) = from.toEngine() to s.toEngine() // both FINE layout, so 10↔25 mode switches fade too
                     if (bigJump(a, z)) for (step in 1 until RAMP_STEPS) { // short fade so a profile change does not click
                         engine.applyAll(a.lerp(z, step / RAMP_STEPS.toFloat()))
                         SystemClock.sleep(RAMP_STEP_MS)
