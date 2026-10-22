@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">M2Y EQ</string>
+    <string name="slogan">BYD araçları için geliştirilmiştir</string>
+    <string name="save_preset">M2Y\'ye kaydet</string>
+    <string name="reset_preset">M2Y\'yi fabrika ayarına döndür</string>
+    <string name="channel_name">Ekolayzır</string>
+    <string name="notification_on">Ses ayarı uygulanıyor: %1$s</string>
+    <string name="about_text">Geliştiren: Yeşil Dönüşüm Mühendisi - M2Y\n\nBYD Seal U DM-i multimedya ekranı (Android 10, 1920×1080, Infinity ses sistemi) için geliştirildi ve herkesin kullanımına açıktır.\n\nTüm sistem sesine tek bir DynamicsProcessing efekti uygular: 30 bant, otomatik ön kazanç, −1 dB sınırlayıcı; telefon görüşmesinde kendini kaldırır. Reklam, izleme ve internet erişimi yoktur.\n\nKaynak kodu: github.com/mehmetmesut/byd-m2y-eq\nDuyuru ve indirme: byd.mehmetmesut.com\n\nBYD ile bağlantılı değildir.</string>
+    <string name="error_effect">Ses efekti kurulamadı: %1$s</string>
+</resources>
