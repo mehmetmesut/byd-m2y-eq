@@ -10,7 +10,7 @@
   <img alt="licence" src="https://img.shields.io/github/license/mehmetmesut/byd-m2y-eq?color=6250d6">
 </p>
 <p align="center">
-  <a href="https://github.com/mehmetmesut/byd-m2y-eq/releases/download/1.25.07.68.1/M2YEQ_1.25.07.68.1.apk"><b>⬇ Download APK (128 KB)</b></a> ·
+  <a href="https://github.com/mehmetmesut/byd-m2y-eq/releases/download/1.25.07.68.2/M2YEQ_1.25.07.68.2.apk"><b>⬇ Download APK (128 KB)</b></a> ·
   <a href="https://byd.mehmetmesut.com">byd.mehmetmesut.com</a> ·
   <a href="https://github.com/mehmetmesut/byd-m2y">⭐ All M2Y apps for BYD</a>
 </p>
@@ -67,7 +67,7 @@ Head unit with wireless ADB enabled:
 
 ```
 adb connect <car-ip>:5555
-adb install -r M2YEQ_1.25.07.68.1.apk
+adb install -r M2YEQ_1.25.07.68.2.apk
 ```
 
 - **Windows one-click installer:** https://byd.mehmetmesut.com/m2y-kurulum.cmd asks for the car's IP, downloads Google's platform-tools if missing, downloads the chosen apps, verifies SHA-256 and installs.
@@ -161,7 +161,7 @@ Kablosuz ADB açık multimedya ekranı:
 
 ```
 adb connect <araç-ip>:5555
-adb install -r M2YEQ_1.25.07.68.1.apk
+adb install -r M2YEQ_1.25.07.68.2.apk
 ```
 
 - **Windows tek tıkla kurulum:** https://byd.mehmetmesut.com/m2y-kurulum.cmd aracın IP adresini sorar, yoksa Google platform-tools'u indirir, seçtiğiniz uygulamaları indirir, SHA-256 doğrulaması yapar ve kurar.
@@ -255,7 +255,7 @@ Bu uygulamaları önce, mağaza uygulamaları araca uymadığı için kendi BYD 
 
 ```
 adb connect <ip-автомобиля>:5555
-adb install -r M2YEQ_1.25.07.68.1.apk
+adb install -r M2YEQ_1.25.07.68.2.apk
 ```
 
 - **Установщик для Windows в один клик:** https://byd.mehmetmesut.com/m2y-kurulum.cmd спрашивает IP автомобиля, при необходимости скачивает platform-tools от Google, скачивает выбранные приложения, проверяет SHA-256 и устанавливает их.
