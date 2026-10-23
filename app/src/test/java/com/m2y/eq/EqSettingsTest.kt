@@ -65,8 +65,32 @@ class EqSettingsTest {
         assertEquals(48, EqSettings.dbToProgress(99f, min, max)) // clamped
     }
 
-    @Test fun mmyPresetMatchesUserTuning() {
-        assertEquals(listOf(3f, 2f, 2f, -2f, -3f, 0f, 3f, 2f, 3f, 1f), EqSettings.PRESETS.getValue("M2Y").gains)
+    @Test fun mmyPresetIsTheUsersFlatEqualizerSetting() {
+        // Flat: +2 +3 +2 −1 −2 0 +1 +2 +2 +1 dB, bass 20 %, loudness 35 %
+        val m2y = EqSettings.PRESETS.getValue("M2Y")
+        assertEquals(3f, m2y.bassDb, 0f)             // 20 % of Flat's 15 dB
+        assertEquals(7f, m2y.loudnessDb, 0f)         // 35 % of Flat's 20 dB
+        assertEquals(Headroom.STRONG, m2y.headroom)  // Flat takes nothing back at the input
+        assertEquals(
+            listOf(2.5f, 3f, 4f, 2f, .5f, -1f, -1.5f, -2f, -1.5f, 0f, 0f, 0f, 1f, 1f, 1.5f, 2f, 2f, 2f, 2f, 2f, 1.5f, 1f, 1f, 1f, 0f),
+            m2y.gains,
+        )
+        assertEquals(6f, at(m2y, 94f) + m2y.bassDb, 0f) // Flat's 94 Hz bin: "62" slider +3 and bass +3
+    }
+
+    @Test fun flatSlidersLiftTheOctaveBelowTheirLabel() {
+        // Flat's "1k" slider alone: its band ends at 1 kHz and starts after "500", so 630–1000 Hz move and 2 kHz does not
+        val k1 = EqSettings.fromFlat(List(10) { if (it == 5) 6f else 0f }, 0f, 0f)
+        for (hz in listOf(630f, 800f, 1000f)) assertEquals(6f, at(k1, hz), 0f)
+        for (hz in listOf(400f, 1250f, 2000f)) assertEquals(0f, at(k1, hz), 0f)
+        // bass alone: our own bass band covers 47 and 94 Hz, the bands only carry Flat's slope above it
+        val bass = EqSettings.fromFlat(List(10) { 0f }, 100f, 100f)
+        assertEquals(15f, bass.bassDb, 0f)
+        assertEquals(20f, bass.loudnessDb, 0f)
+        assertEquals(0f, at(bass, 47f), 0f)
+        assertEquals(0f, at(bass, 94f), 0f)
+        assertEquals(7.5f, at(bass, 141f), 0f) // halfway between Flat's 94 Hz (+15) and 188 Hz (0) bins
+        assertEquals(0f, at(bass, 234f), 0f)
     }
 
     @Test fun thirdOctavePresetsAreConvertedToTheFineLayout() {
@@ -86,7 +110,7 @@ class EqSettingsTest {
     }
 
     @Test fun resampleKeepsCurveAtSharedFrequencies() {
-        val mmy = EqSettings.PRESETS.getValue("M2Y")
+        val mmy = EqSettings.PRESETS.getValue("Konuşma") // an octave preset
         val f = mmy.resampled(EqSettings.FINE.size)
         for (hz in listOf(500f, 1000f, 2000f, 4000f, 8000f, 16000f)) { // in both layouts
             assertEquals(mmy.gains[EqSettings.OCTAVE.toList().indexOf(hz)], at(f, hz), 0f)
@@ -157,10 +181,10 @@ class EqSettingsTest {
     }
 
     @Test fun lerpBlendsGainsAndKeepsTarget() {
-        val a = EqSettings.FLAT
+        val a = EqSettings.FLAT.resampled(EqSettings.FINE.size) // same layout as M2Y
         val b = EqSettings.PRESETS.getValue("M2Y").copy(loudnessDb = 4f, surround = 0.3f, intensity = 2f)
         val half = a.lerp(b, 0.5f)
-        assertEquals(1.5f, half.gains[0], 0f)
+        assertEquals(b.gains[0] / 2, half.gains[0], 0f)
         assertEquals(2f, half.loudnessDb, 0f)
         assertEquals(1.5f, half.intensity, 0f)
         assertEquals(0.3f, half.surround, 0f) // non-continuous fields jump to the target
@@ -168,10 +192,10 @@ class EqSettingsTest {
     }
 
     @Test fun engineAlwaysRunsTheFineLayoutSmoothly() {
-        val curve = EqSettings.PRESETS.getValue("M2Y").engineGains()
+        val curve = EqSettings.PRESETS.getValue("Konuşma").engineGains()
         assertEquals(EqSettings.FINE.size, curve.size)
-        assertEquals(-3f, curve[fine.indexOf(500f)], 0.001f) // octave centres keep their value
-        // M2Y falls 4 dB per octave at 125–250 Hz; the widest FINE step there is 0,42 octave → ≤ 1,7 dB
+        assertEquals(1f, curve[fine.indexOf(500f)], 0.001f) // octave centres keep their value
+        // Konuşma rises 2 dB per octave at 250 Hz–1 kHz; no FINE step may jump more than 1,7 dB
         assertTrue(curve.zipWithNext().all { (a, b) -> abs(b - a) <= 1.7f })
         val pop = EqSettings.PRESETS.getValue("Pop")
         assertEquals(pop.gains, pop.engineGains()) // FINE input is used as is at 100 %
@@ -194,7 +218,7 @@ class EqSettingsTest {
         assertTrue(preset.copy(surround = .21f).differsFrom(preset))
         assertTrue(preset.copy(balance = .05f).differsFrom(preset))
         assertTrue(preset.copy(bassHz = 85f).differsFrom(preset))
-        assertTrue(preset.copy(headroom = Headroom.STRONG).differsFrom(preset))
+        assertTrue(preset.copy(headroom = Headroom.CLEAN).differsFrom(preset))
         assertTrue(preset.copy(intensity = 1.1f).differsFrom(preset))
         assertTrue(preset.withBand(0, 3.5f).differsFrom(preset))
     }
