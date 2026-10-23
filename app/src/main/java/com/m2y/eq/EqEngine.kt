@@ -3,12 +3,12 @@ package com.m2y.eq
 import android.media.audiofx.AudioEffect
 import android.media.audiofx.DynamicsProcessing
 import android.media.audiofx.DynamicsProcessing.EqBand
-import android.media.audiofx.DynamicsProcessing.Limiter
 import android.media.audiofx.Virtualizer
 import android.util.Log
 
 /**
- * Per audio session: one DynamicsProcessing (bass shelf, FINE-layout EQ, per-channel limiter for loudness and balance),
+ * Per audio session: one DynamicsProcessing (per-channel input gain for headroom, loudness and balance, bass shelf,
+ * FINE-layout EQ; no limiter, by the user's choice: like Flat Equalizer, peaks above full scale clip),
  * plus a Virtualizer only while surround is switched on.
  * No reverb: PresetReverb on session 0 is an auxiliary effect that ordinary players never attach to, so it is inaudible.
  * Session 0 is the global output mix; player sessions are used only if the global one is refused.
@@ -56,13 +56,13 @@ class EqEngine {
     }
 
     private fun apply(dp: DynamicsProcessing, s: EqSettings) {
-        dp.setInputGainAllChannelsTo(EqSettings.inputGainDb(s))
+        val input = EqSettings.inputGainDb(s)
+        val (left, right) = s.channelGains()
+        dp.setInputGainbyChannel(0, input + left)
+        dp.setInputGainbyChannel(1, input + right)
         dp.setPreEqBandAllChannelsTo(0, EqBand(true, s.bassHz, s.bassDb))
         dp.setPreEqBandAllChannelsTo(1, EqBand(true, EqSettings.TOP_CUTOFF_HZ, 0f))
         s.engineGains().forEachIndexed { i, db -> dp.setPostEqBandAllChannelsTo(i, EqBand(true, CUTOFFS[i], db)) }
-        val (left, right) = s.channelGains()
-        dp.setLimiterByChannelIndex(0, limiter(left))
-        dp.setLimiterByChannelIndex(1, limiter(right))
         dp.enabled = s.enabled
     }
 
@@ -88,18 +88,13 @@ class EqEngine {
             null
         }
 
-    // Post gain (loudness, balance) is added after the limiter, so the threshold drops by the same amount
-    // to keep the output ceiling at LIMITER_THRESHOLD_DB.
-    private fun limiter(postGainDb: Float) = Limiter(true, true, 0, LIMITER_ATTACK_MS, LIMITER_RELEASE_MS, LIMITER_RATIO,
-        LIMITER_THRESHOLD_DB - maxOf(0f, postGainDb), postGainDb)
-
     private fun config() = DynamicsProcessing.Config.Builder(
         DynamicsProcessing.VARIANT_FAVOR_FREQUENCY_RESOLUTION,
         CHANNELS,
         true, PRE_EQ_BANDS,
         false, 0,
         true, CUTOFFS.size,
-        true,
+        false, // no limiter stage
     ).setPreferredFrameDuration(FRAME_MS).build()
 
     private companion object {
@@ -110,10 +105,6 @@ class EqEngine {
         const val PRE_EQ_BANDS = 2 // bass shelf + pass-through up to 20 kHz
         // 20 ms → 1024-point FFT at 48 kHz (46,9 Hz bins): the bass bands become separable; ~21 ms latency, same CPU
         const val FRAME_MS = EqSettings.ENGINE_FRAME_MS
-        const val LIMITER_ATTACK_MS = 1f
-        const val LIMITER_RELEASE_MS = 120f // smoother when BALANCED/STRONG headroom lets the limiter work
-        const val LIMITER_RATIO = 10f
-        const val LIMITER_THRESHOLD_DB = -1f // −1 dB ceiling; it is a sample-peak limiter, so the preamp keeps extra margin
         const val MAX_STRENGTH = 1000 // Virtualizer strength range 0..1000
     }
 }

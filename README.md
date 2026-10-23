@@ -10,7 +10,7 @@
   <img alt="licence" src="https://img.shields.io/github/license/mehmetmesut/byd-m2y-eq?color=6250d6">
 </p>
 <p align="center">
-  <a href="https://github.com/mehmetmesut/byd-m2y-eq/releases/download/1.25.07.68.2/M2YEQ_1.25.07.68.2.apk"><b>⬇ Download APK (128 KB)</b></a> ·
+  <a href="https://github.com/mehmetmesut/byd-m2y-eq/releases/download/1.25.07.68.3/M2YEQ_1.25.07.68.3.apk"><b>⬇ Download APK (128 KB)</b></a> ·
   <a href="https://byd.mehmetmesut.com">byd.mehmetmesut.com</a> ·
   <a href="https://github.com/mehmetmesut/byd-m2y">⭐ All M2Y apps for BYD</a>
 </p>
@@ -37,7 +37,7 @@ I built M2Y EQ first for **my own BYD SEAL U DM-i**. The head unit has no user e
 - **10 or 25 bands**, ±12 dB per band, aligned to the engine's real FFT bins (20 ms frames, 46.9 Hz bins at 48 kHz: one band per bin up to 281 Hz, 1/3 octave above), so every band is audible. Colour gradient (green → orange → red for boost, light blue → grey → purple for cut) and a ±6 dB safe-range guide; values beyond the safe range are shown in orange.
 - **Presets:** M2Y (your own, editable), BYD (reference, flat), AI (gentle ±1.5 dB cabin correction), Pop, Rock, Rap, Classical, Speech. The presets avoid boosting 250–315 Hz (door-panel boxiness) and keep 4–5 kHz within +0.5 dB (A-pillar tweeters and windscreen glare).
 - **Save to M2Y** keeps every setting (bands, bass, loudness, bass frequency, balance, surround, sound strength, intensity) and lights up only when something changed; **↺** returns M2Y to its factory values.
-- **Sound strength:** Clean (preamp = largest boost + 2 dB, no limiting, quietest), Balanced (default: the first 3 dB of boost pass, the limiter catches peaks) or Strong (no preamp, as loud as other EQ apps); a **−1 dB limiter** always holds.
+- **Sound strength:** Clean (preamp = largest boost + 2 dB, quietest), Balanced (default: the first 3 dB of boost pass) or Strong (no preamp, as loud as other EQ apps). There is **no limiter**: as in other EQ apps, very loud peaks can clip.
 - **Preset intensity** 0–200 % scales the curve; **bass and loudness up to +15 dB**.
 - **Fair comparison:** equal-level mode takes back the curve's average gain (90 Hz – 8 kHz) so presets can be judged without the louder-sounds-better trap.
 - **Sound tab:** bass frequency (40–150 Hz, default 80 Hz; 60–90 Hz recommended for the subwoofer), left/right balance, optional virtual surround (the effect is only created when switched on, and dropped again if the output does not support it).
@@ -67,7 +67,7 @@ Head unit with wireless ADB enabled:
 
 ```
 adb connect <car-ip>:5555
-adb install -r M2YEQ_1.25.07.68.2.apk
+adb install -r M2YEQ_1.25.07.68.3.apk
 ```
 
 - **Windows one-click installer:** https://byd.mehmetmesut.com/m2y-kurulum.cmd asks for the car's IP, downloads Google's platform-tools if missing, downloads the chosen apps, verifies SHA-256 and installs.
@@ -82,7 +82,7 @@ adb install -r M2YEQ_1.25.07.68.2.apk
 
 | Permission | Why |
 |---|---|
-| `MODIFY_AUDIO_SETTINGS` | Create and control the audio effects (equalizer, limiter, optional virtual surround) |
+| `MODIFY_AUDIO_SETTINGS` | Create and control the audio effects (equalizer, optional virtual surround) |
 | `FOREGROUND_SERVICE` | Keep the effect service alive while the car is on; it shows one low-priority notification |
 | `RECEIVE_BOOT_COMPLETED` | Re-apply your settings after the head unit boots or the app is updated |
 
@@ -131,7 +131,7 @@ M2Y EQ'yu önce **kendi BYD SEAL U DM-i aracım** için yazdım. Multimedya ekra
 - **10 veya 25 bant**, bant başına ±12 dB; bantlar motorun gerçek FFT kutularına hizalıdır (20 ms çerçeve, 48 kHz'de 46,9 Hz'lik kutular: 281 Hz'e kadar kutu başına bir bant, üstünde 1/3 oktav), böylece her bant duyulur. Renk gradyanı (yükseltme için yeşil → turuncu → kırmızı, kısma için açık mavi → gri → mor) ve ±6 dB güvenli aralık kılavuzu; güvenli aralığın dışındaki değerler turuncu gösterilir.
 - **Ön ayarlar:** M2Y (kendi ayarınız, düzenlenebilir), BYD (referans, düz), AI (hafif ±1,5 dB kabin düzeltmesi), Pop, Rock, Rap, Klasik, Konuşma. Ön ayarlar 250–315 Hz'i yükseltmez (kapı panelinin çınlaması) ve 4–5 kHz'i +0,5 dB içinde tutar (A sütunundaki tweeter'lar ve ön cam parlaması).
 - **M2Y'ye kaydet** tüm ayarları saklar (bantlar, bas, ses yükseltme, bas frekansı, denge, surround, ses gücü, yoğunluk) ve yalnız bir değişiklik varken etkinleşir; **↺** M2Y'yi fabrika değerlerine döndürür.
-- **Ses gücü:** Temiz (ön kazanç = en büyük yükseltme + 2 dB, sınırlama yok, en sessiz), Dengeli (varsayılan: yükseltmenin ilk 3 dB'si geçer, tepeleri sınırlayıcı yakalar) veya Güçlü (ön kazanç yok, diğer EQ uygulamaları kadar yüksek); **−1 dB sınırlayıcı** her zaman devrededir.
+- **Ses gücü:** Temiz (ön kazanç = en büyük yükseltme + 2 dB, en sessiz), Dengeli (varsayılan: yükseltmenin ilk 3 dB'si geçer) veya Güçlü (ön kazanç yok, diğer EQ uygulamaları kadar yüksek). **Sınırlayıcı yoktur:** diğer EQ uygulamalarında olduğu gibi çok yüksek tepeler kırpılabilir.
 - **Ön ayar yoğunluğu** %0–200 eğriyi ölçekler; **bas ve ses yükseltme +15 dB'e kadar**.
 - **Adil karşılaştırma:** eşit ses düzeyi modu eğrinin ortalama kazancını (90 Hz – 8 kHz) geri alır; ön ayarlar "yüksek olan iyi gelir" yanılgısı olmadan karşılaştırılır.
 - **Ses sekmesi:** bas frekansı (40–150 Hz, varsayılan 80 Hz; subwoofer için 60–90 Hz önerilir), sol/sağ denge, isteğe bağlı sanal surround (efekt yalnız açıldığında oluşturulur; çıkış desteklemiyorsa yeniden bırakılır).
@@ -161,7 +161,7 @@ Kablosuz ADB açık multimedya ekranı:
 
 ```
 adb connect <araç-ip>:5555
-adb install -r M2YEQ_1.25.07.68.2.apk
+adb install -r M2YEQ_1.25.07.68.3.apk
 ```
 
 - **Windows tek tıkla kurulum:** https://byd.mehmetmesut.com/m2y-kurulum.cmd aracın IP adresini sorar, yoksa Google platform-tools'u indirir, seçtiğiniz uygulamaları indirir, SHA-256 doğrulaması yapar ve kurar.
@@ -176,7 +176,7 @@ adb install -r M2YEQ_1.25.07.68.2.apk
 
 | İzin | Neden |
 |---|---|
-| `MODIFY_AUDIO_SETTINGS` | Ses efektlerini (ekolayzır, sınırlayıcı, isteğe bağlı sanal surround) oluşturmak ve denetlemek |
+| `MODIFY_AUDIO_SETTINGS` | Ses efektlerini (ekolayzır, isteğe bağlı sanal surround) oluşturmak ve denetlemek |
 | `FOREGROUND_SERVICE` | Araç açıkken efekt servisini canlı tutmak; tek bir düşük öncelikli bildirim gösterir |
 | `RECEIVE_BOOT_COMPLETED` | Multimedya ekranı açıldığında ya da uygulama güncellendiğinde ayarlarınızı yeniden uygulamak |
 
@@ -225,7 +225,7 @@ Bu uygulamaları önce, mağaza uygulamaları araca uymadığı için kendi BYD 
 - **10 или 25 полос**, ±12 дБ на полосу; полосы выровнены по реальным FFT-бинам движка (кадры по 20 мс, бины по 46,9 Гц при 48 кГц: до 281 Гц одна полоса на бин, выше — 1/3 октавы), поэтому каждая полоса слышна. Цветовой градиент (подъём: зелёный → оранжевый → красный, срез: голубой → серый → фиолетовый) и ориентир безопасного диапазона ±6 дБ; значения за его пределами показываются оранжевым.
 - **Пресеты:** M2Y (ваш собственный, редактируемый), BYD (референс, плоский), AI (мягкая коррекция салона ±1,5 дБ), Pop, Rock, Rap, «Классика», «Речь». Пресеты не поднимают 250–315 Гц (гулкость дверных панелей) и держат 4–5 кГц в пределах +0,5 дБ (твитеры в стойках А и блики от лобового стекла).
 - **«Сохранить в M2Y»** запоминает все настройки (полосы, бас, громкость, частоту баса, баланс, окружение, силу звука, интенсивность) и подсвечивается только при наличии изменений; **↺** возвращает M2Y к заводским значениям.
-- **Сила звука:** «Чистая» (предусиление = наибольший подъём + 2 дБ, без ограничения, тише всего), «Сбалансированная» (по умолчанию: первые 3 дБ подъёма проходят, пики ловит ограничитель) или «Сильная» (без предусиления, так же громко, как другие эквалайзеры); **ограничитель −1 дБ** действует всегда.
+- **Сила звука:** «Чистая» (предусиление = наибольший подъём + 2 дБ, тише всего), «Сбалансированная» (по умолчанию: первые 3 дБ подъёма проходят) или «Сильная» (без предусиления, так же громко, как другие эквалайзеры). **Ограничителя нет:** как и в других эквалайзерах, очень громкие пики могут срезаться.
 - **Интенсивность пресета** 0–200 % масштабирует кривую; **бас и громкость до +15 дБ**.
 - **Честное сравнение:** режим равной громкости возвращает средний прирост кривой (90 Гц – 8 кГц), поэтому пресеты можно сравнивать без ловушки «громче значит лучше».
 - **Вкладка «Звук»:** частота баса (40–150 Гц, по умолчанию 80 Гц; для сабвуфера рекомендуется 60–90 Гц), баланс лево/право, необязательное виртуальное окружение (эффект создаётся только при включении и снова удаляется, если выход его не поддерживает).
@@ -255,7 +255,7 @@ Bu uygulamaları önce, mağaza uygulamaları araca uymadığı için kendi BYD 
 
 ```
 adb connect <ip-автомобиля>:5555
-adb install -r M2YEQ_1.25.07.68.2.apk
+adb install -r M2YEQ_1.25.07.68.3.apk
 ```
 
 - **Установщик для Windows в один клик:** https://byd.mehmetmesut.com/m2y-kurulum.cmd спрашивает IP автомобиля, при необходимости скачивает platform-tools от Google, скачивает выбранные приложения, проверяет SHA-256 и устанавливает их.
@@ -270,7 +270,7 @@ adb install -r M2YEQ_1.25.07.68.2.apk
 
 | Разрешение | Зачем |
 |---|---|
-| `MODIFY_AUDIO_SETTINGS` | Создавать аудиоэффекты (эквалайзер, ограничитель, необязательное виртуальное окружение) и управлять ими |
+| `MODIFY_AUDIO_SETTINGS` | Создавать аудиоэффекты (эквалайзер, необязательное виртуальное окружение) и управлять ими |
 | `FOREGROUND_SERVICE` | Держать службу эффекта активной, пока автомобиль включён; показывает одно уведомление низкого приоритета |
 | `RECEIVE_BOOT_COMPLETED` | Заново применять ваши настройки после загрузки головного устройства или обновления приложения |
 

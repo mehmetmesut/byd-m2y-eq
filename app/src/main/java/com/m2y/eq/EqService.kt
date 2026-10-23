@@ -23,7 +23,7 @@ import android.os.SystemClock
 /**
  * Foreground service that owns the audio effects; all effect work runs on one background thread.
  * During phone / VoIP calls the effects are removed, so the hands-free echo canceller sees the plain
- * loudspeaker signal (an EQ curve and limiter in that path make echo cancellation worse) and voice stays natural.
+ * loudspeaker signal (an EQ curve in that path make echo cancellation worse) and voice stays natural.
  */
 class EqService : Service() {
     private val thread = HandlerThread("m2y-eq").apply { start() }

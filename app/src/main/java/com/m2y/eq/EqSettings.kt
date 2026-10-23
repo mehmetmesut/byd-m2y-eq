@@ -12,7 +12,7 @@ enum class Headroom { CLEAN, BALANCED, STRONG }
 data class EqSettings(
     val gains: List<Float>,        // dB per band; 10 = octave, 25 = FINE (what the engine can really resolve)
     val bassDb: Float = 0f,        // low-shelf boost below bassHz
-    val loudnessDb: Float = 0f,    // limiter post-gain
+    val loudnessDb: Float = 0f,    // extra input gain (there is no limiter)
     val enabled: Boolean = true,
     val bassHz: Float = BASS_DEFAULT_HZ,
     val balance: Float = 0f,       // -1 = left only … +1 = right only
@@ -25,7 +25,7 @@ data class EqSettings(
         require(gains.size in LAYOUTS) { "band count must be one of ${LAYOUTS.keys}, got ${gains.size}" }
     }
 
-    /** Limiter post-gain per channel (left, right): loudness minus the attenuation of the side we pan away from. */
+    /** Extra input gain per channel (left, right): loudness minus the attenuation of the side we pan away from. */
     fun channelGains(): Pair<Float, Float> {
         val b = balance.coerceIn(-1f, 1f)
         return (loudnessDb - BALANCE_MAX_CUT_DB * maxOf(0f, b)) to (loudnessDb - BALANCE_MAX_CUT_DB * maxOf(0f, -b))
@@ -120,8 +120,8 @@ data class EqSettings(
          * lifts the octave *below* the label; bass is preEq band 0 up to 80 Hz at 15 dB × %, loudness the limiter post-gain
          * at 20 dB × %, no input gain. At its 10 ms frame (512-point FFT, 93,75 Hz bins at 48 kHz) that is one gain per bin,
          * and overlap-add blends neighbouring bins (modelled linear in dB). That response is sampled at the FINE centres and
-         * the part our own bass band adds (centres below bassHz + ½ bin) is taken out of the bands. Flat clips peaks after its
-         * limiter; STRONG headroom gives the same level with our −1 dB ceiling instead.
+         * the part our own bass band adds (centres below bassHz + ½ bin) is taken out of the bands. Our loudness is input gain
+         * and there is no limiter, so with STRONG headroom the level matches Flat and, like Flat, loud peaks clip.
          */
         fun fromFlat(sliders: List<Float>, bassPercent: Float, loudnessPercent: Float): EqSettings {
             require(sliders.size == FLAT_CUTOFFS.size) { "Flat has ${FLAT_CUTOFFS.size} sliders" }
@@ -156,7 +156,9 @@ data class EqSettings(
         private fun third(vararg from25Hz: Float) = EqSettings(fromLegacyThird(from25Hz.toList()))
         private val FLAT_CUTOFFS = floatArrayOf(31.25f, 62.5f, 145f, 250f, 500f, 1000f, 2000f, 4000f, 8000f, 16000f) // before PRESETS
         val PRESETS: Map<String, EqSettings> = linkedMapOf(
-            "M2Y" to fromFlat(listOf(2f, 3f, 2f, -1f, -2f, 0f, 1f, 2f, 2f, 1f), bassPercent = 20f, loudnessPercent = 35f),
+            // the Flat curve's bands; bass and loudness set by the user (Flat would give +3 / +7 dB)
+            "M2Y" to fromFlat(listOf(2f, 3f, 2f, -1f, -2f, 0f, 1f, 2f, 2f, 1f), bassPercent = 20f, loudnessPercent = 35f)
+                .copy(bassDb = 2.5f, loudnessDb = 6.8f),
             REFERENCE_PRESET to FLAT,
             // "AI": transparent calibration for the SEAL U Infinity system (boot subwoofer, 4 door woofers, centre mid,
             // 4 tweeters) in a closed SUV cabin: gentle 40–80 Hz punch, 250–400 Hz boxiness cut, 2–2,5 kHz vocal clarity,
@@ -176,9 +178,9 @@ data class EqSettings(
         )
 
         /**
-         * Input gain before the EQ. CLEAN takes back the largest boost plus a true-peak margin (no limiting, quietest);
-         * BALANCED lets the first [BALANCED_FREE_DB] of boost through and the −1 dB limiter catches the peaks;
-         * STRONG takes nothing back (as loud as other EQ apps; the limiter works hardest). Cuts never raise the gain.
+         * Input gain before the EQ (there is no limiter after it). CLEAN takes back the largest boost plus a true-peak margin
+         * (quietest; loudness still adds on top); BALANCED lets the first [BALANCED_FREE_DB] of boost through, loud peaks may
+         * clip; STRONG takes nothing back (as loud as other EQ apps, peaks clip). Cuts never raise the gain.
          */
         fun preampDb(s: EqSettings): Float {
             val boost = (s.engineGains() + s.bassDb).max()

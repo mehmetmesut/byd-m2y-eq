@@ -67,15 +67,19 @@ class EqSettingsTest {
 
     @Test fun mmyPresetIsTheUsersFlatEqualizerSetting() {
         // Flat: +2 +3 +2 −1 −2 0 +1 +2 +2 +1 dB, bass 20 %, loudness 35 %
+        val flat = EqSettings.fromFlat(listOf(2f, 3f, 2f, -1f, -2f, 0f, 1f, 2f, 2f, 1f), 20f, 35f)
+        assertEquals(3f, flat.bassDb, 0f)             // 20 % of Flat's 15 dB
+        assertEquals(7f, flat.loudnessDb, 0f)         // 35 % of Flat's 20 dB
+        assertEquals(6f, at(flat, 94f) + flat.bassDb, 0f) // Flat's 94 Hz bin: "62" slider +3 and bass +3
         val m2y = EqSettings.PRESETS.getValue("M2Y")
-        assertEquals(3f, m2y.bassDb, 0f)             // 20 % of Flat's 15 dB
-        assertEquals(7f, m2y.loudnessDb, 0f)         // 35 % of Flat's 20 dB
+        assertEquals(flat.gains, m2y.gains)           // the factory M2Y keeps Flat's bands …
+        assertEquals(2.5f, m2y.bassDb, 0f)            // … with the user's own bass and loudness
+        assertEquals(6.8f, m2y.loudnessDb, 0f)
         assertEquals(Headroom.STRONG, m2y.headroom)  // Flat takes nothing back at the input
         assertEquals(
             listOf(2.5f, 3f, 4f, 2f, .5f, -1f, -1.5f, -2f, -1.5f, 0f, 0f, 0f, 1f, 1f, 1.5f, 2f, 2f, 2f, 2f, 2f, 1.5f, 1f, 1f, 1f, 0f),
             m2y.gains,
         )
-        assertEquals(6f, at(m2y, 94f) + m2y.bassDb, 0f) // Flat's 94 Hz bin: "62" slider +3 and bass +3
     }
 
     @Test fun flatSlidersLiftTheOctaveBelowTheirLabel() {
