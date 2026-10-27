@@ -1,5 +1,6 @@
 <p align="center"><img src="docs/logo.png" width="128" height="128" alt="M2Y EQ"></p>
 <h1 align="center">M2Y EQ</h1>
+<p align="center"><b>➡ M2Y EQ is now part of <a href="https://github.com/mehmetmesut/byd-m2y-tools">M2Y Tools</a></b> – keyboard and equalizer in one app. This repository is archived; new releases come from byd-m2y-tools.<br><sub>M2Y EQ artık <a href="https://github.com/mehmetmesut/byd-m2y-tools">M2Y Tools</a> içinde (klavye ve ekolayzır tek uygulamada); bu depo arşivlendi. · M2Y EQ теперь входит в <a href="https://github.com/mehmetmesut/byd-m2y-tools">M2Y Tools</a> (клавиатура и эквалайзер в одном приложении); репозиторий в архиве.</sub></p>
 <p align="center"><b>A system-wide 25-band equalizer for the BYD multimedia screen, tuned for the Infinity sound system.</b><br><sub>BYD multimedya ekranı için Infinity ses sistemine göre ayarlanmış, tüm sisteme uygulanan 25 bantlı ekolayzır · Системный 25-полосный эквалайзер для мультимедийного экрана BYD, настроенный под аудиосистему Infinity</sub></p>
 <p align="center">
   <a href="https://github.com/mehmetmesut/byd-m2y-eq/releases/latest"><img alt="release" src="https://img.shields.io/github/v/release/mehmetmesut/byd-m2y-eq?label=APK&color=2a78d6"></a>
